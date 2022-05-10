@@ -4,13 +4,24 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "watch": "tsc -w",
+    "dev": "nodemon dist/index.js",
+    "start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^17.0.31",
+    "tsconfig.json": "^1.0.11",
     "typescript": "^4.6.4"
+  },
+  "dependencies": {
+    "@mikro-orm/cli": "^5.1.3",
+    "@mikro-orm/core": "^5.1.3",
+    "@mikro-orm/migrations": "^5.1.3",
+    "@mikro-orm/postgresql": "^5.1.3",
+    "nodemon": "^2.0.16",
+    "pg": "^8.7.3"
   }
 }
