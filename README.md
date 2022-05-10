@@ -15,3 +15,5 @@ Original repository: https://github.com/benawad/lireddit
 - MikroORM
 - PostgresSQL
 - Argon2 Hashing
+
+The code is used for educational purposes only and in no way is intended to infringe the copyrights of Ben Awad's work.
