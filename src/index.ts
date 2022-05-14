@@ -22,6 +22,8 @@ const main = async () => {
   const redisStore = connectRedis(session);
   const redisClient = new Redis();
 
+  app.set("trust proxy", !__prod__);
+
   app.use(
     session({
       name: "qid",
@@ -33,11 +35,12 @@ const main = async () => {
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years.
         httpOnly: true,
-        secure: __prod__, // cookie only works in https
-        sameSite: "lax", // CSRF
+        secure: true, // cookie only works in https
+        sameSite: __prod__ ? "lax" : "none", // CSRF
       },
       secret: "some special secret",
       resave: false,
+      saveUninitialized: false,
     })
   );
 
@@ -56,7 +59,10 @@ const main = async () => {
 
   await apolloServer.start();
 
-  apolloServer.applyMiddleware({ app });
+  apolloServer.applyMiddleware({
+    app,
+    cors: { credentials: true, origin: "https://studio.apollographql.com" },
+  });
 
   app.listen(4000, () => {
     console.info("Server started on port 4000.");
