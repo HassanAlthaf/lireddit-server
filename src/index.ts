@@ -12,6 +12,7 @@ import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
 import { MyContext } from "./types";
+import cors from "cors";
 
 const main = async () => {
   const orm = await MikroORM.init(microConfig);
@@ -23,6 +24,13 @@ const main = async () => {
   const redisClient = new Redis();
 
   app.set("trust proxy", !__prod__);
+
+  app.use(
+    cors({
+      credentials: true,
+      origin: ["https://studio.apollographql.com", "http://localhost:3000"],
+    })
+  );
 
   app.use(
     session({
@@ -61,7 +69,7 @@ const main = async () => {
 
   apolloServer.applyMiddleware({
     app,
-    cors: { credentials: true, origin: "https://studio.apollographql.com" },
+    cors: false,
   });
 
   app.listen(4000, () => {
