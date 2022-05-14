@@ -6,7 +6,7 @@ A simple Node/GraphQL Reddit Clone followed from Ben Awad's video tutorial linke
 
 Original repository: https://github.com/benawad/lireddit
 
-Frontend repository: _Will add soon_
+Frontend repository: https://github.com/HassanAlthaf/lireddit-web
 
 ## Tools and Technologies Used
 
@@ -17,5 +17,10 @@ Frontend repository: _Will add soon_
 - MikroORM
 - PostgresSQL
 - Argon2 Hashing
+- React
+- Next.js
+- TypeScript
+- urql
+- Redis
 
 The code is used for educational purposes only and in no way is intended to infringe the copyrights of Ben Awad's work.
