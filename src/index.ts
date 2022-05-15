@@ -62,6 +62,7 @@ const main = async () => {
       em: orm.em,
       req,
       res,
+      redisClient,
     }),
   });
 
