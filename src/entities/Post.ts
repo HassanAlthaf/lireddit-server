@@ -7,7 +7,9 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
 } from "typeorm";
+import { Updoot } from "./Updoot";
 import { User } from "./User";
 
 @ObjectType()
@@ -33,6 +35,9 @@ export class Post extends BaseEntity {
   @Field()
   @Column()
   creatorId: number;
+
+  @OneToMany(() => Updoot, (updoot) => updoot.post)
+  updoots: Updoot[];
 
   @Field()
   @ManyToOne(() => User, (user) => user.posts)
