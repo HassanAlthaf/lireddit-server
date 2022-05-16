@@ -54,20 +54,44 @@ export class PostResolver {
     const isUpdoot = value !== -1;
     const realValue = isUpdoot ? 1 : -1;
 
-    await dataSource.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.insert(Updoot, {
-        userId,
-        postId,
-        value: realValue,
-      });
+    const updoot = await Updoot.findOne({ where: { postId, userId } });
 
-      await transactionalEntityManager
-        .createQueryBuilder()
-        .update(Post)
-        .set({ points: () => `points + ${realValue}` })
-        .where({ id: postId })
-        .execute();
-    });
+    if (updoot && updoot.value !== realValue) {
+      await dataSource.manager.transaction(
+        async (transactionalEntityManager) => {
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .update(Updoot)
+            .set({ value: realValue })
+            .where({ postId, userId })
+            .execute();
+
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .update(Post)
+            .set({ points: () => `points + ${realValue * 2}` })
+            .where({ id: postId })
+            .execute();
+        }
+      );
+    } else if (!updoot) {
+      await dataSource.manager.transaction(
+        async (transactionalEntityManager) => {
+          await transactionalEntityManager.insert(Updoot, {
+            userId,
+            postId,
+            value: realValue,
+          });
+
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .update(Post)
+            .set({ points: () => `points + ${realValue}` })
+            .where({ id: postId })
+            .execute();
+        }
+      );
+    }
 
     return true;
   }
@@ -75,12 +99,17 @@ export class PostResolver {
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null // Cursor is by date
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null, // Cursor is by date
+    @Ctx() { req }: MyContext
   ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1; // Plus one to check if there are more posts
 
-    const replacements: any[] = [realLimitPlusOne];
+    let replacements: any[] = [realLimitPlusOne];
+
+    if (req.session.userId) {
+      replacements.push(req.session.userId);
+    }
 
     if (cursor) {
       replacements.push(new Date(parseInt(cursor)));
@@ -88,28 +117,20 @@ export class PostResolver {
 
     const posts = await dataSource.query(
       `
-      SELECT p.*, json_build_object('username', u.username, 'id', u.id, 'email', u.email) creator FROM post p
+      SELECT p.*, json_build_object('username', u.username, 'id', u.id, 'email', u.email) creator,
+      ${
+        req.session.userId
+          ? ' (select value from updoot where "userId" = $2 and "postId" = p.id) "voteStatus"'
+          : 'null as "voteStatus"'
+      }
+      FROM post p
       INNER JOIN public.user u on u.id = p."creatorId"
-      ${cursor ? 'WHERE p."createdAt" < $2' : ""}
+      ${cursor ? `WHERE p."createdAt" < $${replacements.length}` : ""}
       ORDER BY p."createdAt" DESC
       LIMIT $1
     `,
       replacements
     );
-
-    // console.log("posts", posts);
-
-    // const queryBuilder = dataSource
-    //   .getRepository(Post)
-    //   .createQueryBuilder("p") // alias p
-    //   .leftJoinAndSelect("p.creator", "user")
-    //   .orderBy('p."createdAt"', "DESC")
-    //   .take(realLimitPlusOne);
-    // // .innerJoinAndSelect("p.creator", "u", 'u.id = p."creatorId"')
-
-    // console.log(queryBuilder.getQueryAndParameters());
-
-    // const posts = await queryBuilder.getMany();
 
     return {
       posts: posts.slice(0, realLimit),
