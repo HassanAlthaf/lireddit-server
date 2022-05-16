@@ -1,3 +1,4 @@
+import { Updoot } from "./../entities/Updoot";
 import { isAuth } from "../middleware/isAuth";
 import {
   Arg,
@@ -39,6 +40,36 @@ export class PostResolver {
   @FieldResolver(() => String)
   textSnippet(@Root() root: Post) {
     return `${root.text.slice(0, 50)}...`;
+  }
+
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  async vote(
+    @Arg("postId", () => Int) postId: number,
+    @Arg("value", () => Int) value: number,
+    @Ctx() { req }: MyContext
+  ) {
+    const { userId } = req.session;
+
+    const isUpdoot = value !== -1;
+    const realValue = isUpdoot ? 1 : -1;
+
+    await dataSource.manager.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.insert(Updoot, {
+        userId,
+        postId,
+        value: realValue,
+      });
+
+      await transactionalEntityManager
+        .createQueryBuilder()
+        .update(Post)
+        .set({ points: () => `points + ${realValue}` })
+        .where({ id: postId })
+        .execute();
+    });
+
+    return true;
   }
 
   @Query(() => PaginatedPosts)
