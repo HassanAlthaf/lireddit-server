@@ -7,6 +7,7 @@ import {
   InputType,
   Int,
   Mutation,
+  ObjectType,
   Query,
   Resolver,
   Root,
@@ -24,6 +25,15 @@ class PostInput {
   text: string;
 }
 
+@ObjectType()
+class PaginatedPosts {
+  @Field(() => [Post])
+  posts: Post[];
+
+  @Field()
+  hasMore: boolean;
+}
+
 @Resolver(Post)
 export class PostResolver {
   @FieldResolver(() => String)
@@ -31,26 +41,49 @@ export class PostResolver {
     return `${root.text.slice(0, 50)}...`;
   }
 
-  @Query(() => [Post])
-  posts(
+  @Query(() => PaginatedPosts)
+  async posts(
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null // Cursor is by date
-  ): Promise<Post[]> {
+  ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1; // Plus one to check if there are more posts
 
-    const queryBuilder = dataSource
-      .getRepository(Post)
-      .createQueryBuilder("p") // alias p
-      .orderBy('"createdAt"', "DESC")
-      .take(realLimit);
+    const replacements: any[] = [realLimitPlusOne];
 
     if (cursor) {
-      queryBuilder.where('"createdAt" < :cursor', {
-        cursor: new Date(parseInt(cursor)),
-      });
+      replacements.push(new Date(parseInt(cursor)));
     }
 
-    return queryBuilder.getMany();
+    const posts = await dataSource.query(
+      `
+      SELECT p.*, json_build_object('username', u.username, 'id', u.id, 'email', u.email) creator FROM post p
+      INNER JOIN public.user u on u.id = p."creatorId"
+      ${cursor ? 'WHERE p."createdAt" < $2' : ""}
+      ORDER BY p."createdAt" DESC
+      LIMIT $1
+    `,
+      replacements
+    );
+
+    // console.log("posts", posts);
+
+    // const queryBuilder = dataSource
+    //   .getRepository(Post)
+    //   .createQueryBuilder("p") // alias p
+    //   .leftJoinAndSelect("p.creator", "user")
+    //   .orderBy('p."createdAt"', "DESC")
+    //   .take(realLimitPlusOne);
+    // // .innerJoinAndSelect("p.creator", "u", 'u.id = p."creatorId"')
+
+    // console.log(queryBuilder.getQueryAndParameters());
+
+    // const posts = await queryBuilder.getMany();
+
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.length === realLimitPlusOne,
+    };
   }
 
   @Query(() => Post, { nullable: true })
