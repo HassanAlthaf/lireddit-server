@@ -1,3 +1,4 @@
+import { User } from "./../entities/User";
 import { Updoot } from "./../entities/Updoot";
 import { isAuth } from "../middleware/isAuth";
 import {
@@ -40,6 +41,29 @@ export class PostResolver {
   @FieldResolver(() => String)
   textSnippet(@Root() root: Post) {
     return `${root.text.slice(0, 50)}...`;
+  }
+
+  @FieldResolver(() => User)
+  creator(
+    @Root() root: Post,
+    @Ctx() { userLoader }: MyContext
+  ): Promise<User | null> {
+    return userLoader.load(root.creatorId);
+  }
+
+  @FieldResolver(() => Int, { nullable: true })
+  async voteStatus(
+    @Root() root: Post,
+    @Ctx() { updootLoader, req }: MyContext
+  ) {
+    if (!req.session.userId) return null;
+
+    const updoot = await updootLoader.load({
+      postId: root.id,
+      userId: req.session.userId,
+    });
+
+    return updoot ? updoot.value : null;
   }
 
   @Mutation(() => Boolean)
@@ -99,17 +123,12 @@ export class PostResolver {
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null, // Cursor is by date
-    @Ctx() { req }: MyContext
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null // Cursor is by date
   ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1; // Plus one to check if there are more posts
 
     let replacements: any[] = [realLimitPlusOne];
-
-    if (req.session.userId) {
-      replacements.push(req.session.userId);
-    }
 
     if (cursor) {
       replacements.push(new Date(parseInt(cursor)));
@@ -117,15 +136,9 @@ export class PostResolver {
 
     const posts = await dataSource.query(
       `
-      SELECT p.*, json_build_object('username', u.username, 'id', u.id, 'email', u.email) creator,
-      ${
-        req.session.userId
-          ? ' (select value from updoot where "userId" = $2 and "postId" = p.id) "voteStatus"'
-          : 'null as "voteStatus"'
-      }
+      SELECT p.*
       FROM post p
-      INNER JOIN public.user u on u.id = p."creatorId"
-      ${cursor ? `WHERE p."createdAt" < $${replacements.length}` : ""}
+      ${cursor ? `WHERE p."createdAt" < $2` : ""}
       ORDER BY p."createdAt" DESC
       LIMIT $1
     `,
@@ -144,7 +157,6 @@ export class PostResolver {
       where: {
         id,
       },
-      relations: ["creator"],
     });
   }
 

@@ -1,3 +1,5 @@
+import { createUpdootLoader } from "./utils/createUpdootLoader";
+import { createUserLoader } from "./utils/createUserLoader";
 import "reflect-metadata";
 import { __prod__, COOKIE_NAME } from "./constants";
 import express from "express";
@@ -62,6 +64,8 @@ const main = async () => {
       req,
       res,
       redisClient,
+      userLoader: createUserLoader(),
+      updootLoader: createUpdootLoader(),
     }),
   });
 
