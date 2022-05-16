@@ -144,6 +144,7 @@ export class PostResolver {
       where: {
         id,
       },
+      relations: ["creator"],
     });
   }
 
