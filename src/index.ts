@@ -14,7 +14,9 @@ import cors from "cors";
 import { dataSource } from "./typeorm";
 
 const main = async () => {
-  await dataSource.initialize();
+  const connection = await dataSource.initialize();
+
+  connection.runMigrations();
 
   const app = express();
 
