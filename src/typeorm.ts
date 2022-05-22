@@ -7,9 +7,7 @@ import path from "path";
 
 let dataSource = new DataSource({
   type: "postgres",
-  database: "lireddit2",
-  username: "postgres",
-  password: "postgres",
+  url: process.env.DATABASE_URL,
   logging: !__prod__,
   synchronize: !__prod__,
   entities: [Post, User, Updoot],

@@ -1,6 +1,7 @@
+import "reflect-metadata";
+import "dotenv-safe/config";
 import { createUpdootLoader } from "./utils/createUpdootLoader";
 import { createUserLoader } from "./utils/createUserLoader";
-import "reflect-metadata";
 import { __prod__, COOKIE_NAME } from "./constants";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
@@ -23,14 +24,14 @@ const main = async () => {
   const app = express();
 
   const redisStore = connectRedis(session);
-  const redisClient = new Redis();
+  const redisClient = new Redis(process.env.REDIS_URL);
 
-  app.set("trust proxy", !__prod__);
+  app.set("trust proxy", true);
 
   app.use(
     cors({
       credentials: true,
-      origin: ["https://studio.apollographql.com", "http://localhost:3000"],
+      origin: JSON.parse(process.env.CORS_ORIGIN),
     })
   );
 
@@ -47,8 +48,9 @@ const main = async () => {
         httpOnly: true,
         secure: true, // cookie only works in https
         sameSite: __prod__ ? "lax" : "none", // CSRF
+        domain: __prod__ ? ".hassanalthaf.com" : undefined,
       },
-      secret: "some special secret",
+      secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
     })
@@ -76,8 +78,8 @@ const main = async () => {
     cors: false,
   });
 
-  app.listen(4000, () => {
-    console.info("Server started on port 4000.");
+  app.listen(parseInt(process.env.PORT), () => {
+    console.info(`Server started on port ${process.env.PORT}.`);
   });
 };
 

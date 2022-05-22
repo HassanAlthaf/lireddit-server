@@ -23,4 +23,7 @@ Frontend repository: https://github.com/HassanAlthaf/lireddit-web
 - urql
 - Redis
 
+Fix Postgres on WSL:
+```sudo -u postgres createuser -s $(whoami); createdb $(whoami)```
+
 The code is used for educational purposes only and in no way is intended to infringe the copyrights of Ben Awad's work.
